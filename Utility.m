@@ -306,10 +306,10 @@ static NSOperationQueue *connectionQueue;
 ////#else
 //    data =  [NSURLConnection sendSynchronousRequest:request returningResponse:response error:error];
 ////#endif
-//    
+//
 //    NSInteger status = [(NSHTTPURLResponse *)*response statusCode];
 //    BOOL isRetryableStatusCode = status >= 500;
-//    
+//
 //    // Retry the request if appropriate
 //    if (retryNumber < 3 && isRetryableStatusCode) {
 //        return [self sendSynchronousRequest:request returningResponse:response error:error AndretryNumber:(retryNumber+1)];
@@ -422,7 +422,7 @@ static NSOperationQueue *connectionQueue;
 //+(void)genericHTTPRequest:(NSURLRequest *)request retryNumber:(NSInteger)retryNumber callback:(void (^)(NSURLResponse* response, NSData* data, NSError* connectionError))callback {
 //#if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 90000
 //    NSURLSessionConfiguration *sessionConfig = [NSURLSessionConfiguration defaultSessionConfiguration];
-//    
+//
 //    sessionConfig.timeoutIntervalForRequest = NSURLConnectionDefaultTimeInterval;
 //    sessionConfig.timeoutIntervalForResource = 2*NSURLConnectionDefaultTimeInterval;
 //    NSURLSession *session = [NSURLSession sessionWithConfiguration:sessionConfig];
@@ -432,13 +432,13 @@ static NSOperationQueue *connectionQueue;
 //#endif
 //            NSInteger status = [(NSHTTPURLResponse *)response statusCode];
 //            BOOL isRetryableStatusCode = status >= 500;
-//            
+//
 //            // Retry the request if appropriate
 //            if (retryNumber < 3 && isRetryableStatusCode) {
 //                dispatch_time_t dispatchTime = dispatch_time(DISPATCH_TIME_NOW, 0 * NSEC_PER_SEC);
 //                dispatch_after(dispatchTime, dispatch_get_main_queue(), ^{
 //                    DLog(@"Replaying request with url %@", request.URL.relativePath);
-//                    
+//
 //                    // Create the next request
 //                    [self genericHTTPRequest:request retryNumber:(retryNumber + 1) callback:callback];
 //                });
@@ -449,11 +449,11 @@ static NSOperationQueue *connectionQueue;
 //                    dispatch_time_t dispatchTime = dispatch_time(DISPATCH_TIME_NOW, 0 * NSEC_PER_SEC);
 //                    dispatch_after(dispatchTime, dispatch_get_main_queue(), ^{
 //                        DLog(@"Replaying request with url %@", request.URL.relativePath);
-//                        
+//
 //                        // Create the next request
 //                        [self genericHTTPRequest:request retryNumber:(retryNumber + 1) callback:callback];
 //                    });
-//                    
+//
 //                }
 //            }
 //             else if (callback) {
@@ -469,8 +469,8 @@ static NSOperationQueue *connectionQueue;
 //                //
 //                //                error = [NSError errorWithDomain:BNCErrorDomain code:BNCBadRequestError userInfo:@{ NSLocalizedDescriptionKey: errorString }];
 //                //            }
-//                
-//               
+//
+//
 //#if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 90000
 //                dispatch_async(dispatch_get_main_queue(), ^{
 //                    callback(response,responseData, error);

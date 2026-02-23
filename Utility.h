@@ -66,23 +66,23 @@
 
 #define bgColor UIColorFromRGB(0xe5e5e5)
 
-#define SERVER_URL @"https://api1.appvirality.com/AVService.svc/v1_1_1"
-#define SERVER_URL_V2 @"https://api1.appvirality.com/AVService.svc/v1_1_2"
-#define SERVER_URL_V21 @"https://sdk.appvirality.com/sdk/v2_0"
-#define IMAGE_SERVER_URL @"https://growth1.appvirality.com"
-#define EMAIL_REGEX @"[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,4}"
-#define    PASSWORD_LENGTH 100
-#define RI_URL @"https://ri1.appvirality.com/RI.svc/v2/RI"
-#define SHARE_URL @"http://s.appvirality.com"
-
-//#define SERVER_URL @"https://api.appvirality.com/AVService.svc/v1_1_1"
-//#define SERVER_URL_V2 @"https://api.appvirality.com/AVService.svc/v1_1_2"
+//#define SERVER_URL @"https://api1.appvirality.com/AVService.svc/v1_1_1"
+//#define SERVER_URL_V2 @"https://api1.appvirality.com/AVService.svc/v1_1_2"
 //#define SERVER_URL_V21 @"https://sdk.appvirality.com/sdk/v2_0"
-//#define IMAGE_SERVER_URL @"https://growth.appvirality.com"
+//#define IMAGE_SERVER_URL @"https://growth1.appvirality.com"
 //#define EMAIL_REGEX @"[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,4}"
 //#define    PASSWORD_LENGTH 100
-//#define RI_URL @"https://ri.appvirality.com/RI.svc/v2/RI"
-//#define SHARE_URL @"http://r.appvirality.com"
+//#define RI_URL @"https://ri1.appvirality.com/RI.svc/v2/RI"
+//#define SHARE_URL @"http://s.appvirality.com"
+
+#define SERVER_URL @"https://api.appvirality.com/AVService.svc/v1_1_1"
+#define SERVER_URL_V2 @"https://api.appvirality.com/AVService.svc/v1_1_2"
+#define SERVER_URL_V21 @"https://sdk.appvirality.com/sdk/v2_0"
+#define IMAGE_SERVER_URL @"https://growth.appvirality.com"
+#define EMAIL_REGEX @"[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,4}"
+#define    PASSWORD_LENGTH 100
+#define RI_URL @"https://ri.appvirality.com/RI.svc/v2/RI"
+#define SHARE_URL @"http://r.appvirality.com"
 
 #define IS_IPAD (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad)
 #define IS_IPHONE (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone)

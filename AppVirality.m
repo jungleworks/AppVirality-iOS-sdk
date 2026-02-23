@@ -189,9 +189,9 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
         
     }
     // [self checkRI:apiKey];
-    [Utility userAgentString];
-    [self performSelectorInBackground:@selector(checkRI:) withObject:apiKey];
-    
+    [Utility userAgentStringWithCompletion:^(NSString *agent) {
+        [self checkRI:apiKey];
+    }];
     __block BOOL  dataExists = FALSE;
     
     [[NSNotificationCenter defaultCenter] addObserverForName:@"referrerDetails" object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *note) {
@@ -376,10 +376,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
         NSError *error = [NSError errorWithDomain:NSAppViralityErrorDomain
                                              code:-57
                                          userInfo:userInfo];
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -392,10 +390,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@/claimreferrerreward",SERVER_URL]];
@@ -467,10 +463,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
         NSError *error = [NSError errorWithDomain:NSAppViralityErrorDomain
                                              code:-57
                                          userInfo:userInfo];
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -483,10 +477,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@/getuserrewards",SERVER_URL]];
@@ -558,10 +550,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
         NSError *error = [NSError errorWithDomain:NSAppViralityErrorDomain
                                              code:-57
                                          userInfo:userInfo];
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -574,10 +564,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@/getusercoupons",SERVER_URL]];
@@ -648,10 +636,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(NO,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -664,10 +650,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(NO,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     NSArray * growthHacks = @[@"Word_of_Mouth",@"Customer_Retention",@"Loyalty_Program",@"All"];
     NSString * growthHack = [growthHacks objectAtIndex:growthHackIndex];
@@ -799,10 +783,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
         NSError *error = [NSError errorWithDomain:NSAppViralityErrorDomain
                                              code:-57
                                          userInfo:userInfo];
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -815,10 +797,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     NSArray * growthHacks = @[@"Word_of_Mouth",@"Customer_Retention",@"Loyalty_Program",@"All"];
     NSString * growthHack = [growthHacks objectAtIndex:growthHackIndex];
@@ -924,22 +904,18 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
         return;
     }
     
-    if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"x-version-av1.1"]) {
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            //    completion(NO);
-            DLog(@"There are no active campaigns for this app.");
-            NSDictionary *userInfo = @{
-                                       NSLocalizedDescriptionKey: NSLocalizedString(@"Operation was unsuccessful.", nil),
-                                       NSLocalizedFailureReasonErrorKey: NSLocalizedString(@"RI Check failed.", nil),
-                                       NSLocalizedRecoverySuggestionErrorKey: NSLocalizedString(@"Please initialize the SDK with a valid API Key.", nil)
-                                       };
-            NSError *error = [NSError errorWithDomain:NSAppViralityErrorDomain
-                                                 code:-57
-                                             userInfo:userInfo];
-            completion(NO,error);
-            return;
-        }
+    if (!isInitialising && ![[NSUserDefaults standardUserDefaults] objectForKey:@"x-version-av1.1"]) {
+        
+        isInitialising = YES;
+        
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+        
+        // DO NOT call completion here.
+        // It will be triggered via notification when checkRI finishes.
+        
+        return;
     }
+
     
     NSDictionary * storedDetails =  [[NSUserDefaults standardUserDefaults] valueForKey:@"AVUserDetails"];
     
@@ -1060,10 +1036,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
         NSError *error = [NSError errorWithDomain:NSAppViralityErrorDomain
                                              code:-57
                                          userInfo:userInfo];
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -1076,10 +1050,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     NSArray * growthHacks = @[@"Word_of_Mouth",@"Customer_Retention",@"Loyalty_Program",@"All"];
@@ -1214,10 +1186,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
         NSError *error = [NSError errorWithDomain:NSAppViralityErrorDomain
                                              code:-57
                                          userInfo:userInfo];
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -1230,10 +1200,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     NSArray * growthHacks = @[@"Word_of_Mouth",@"Customer_Retention",@"Loyalty_Program",@"All"];
@@ -1343,10 +1311,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
         NSError *error = [NSError errorWithDomain:NSAppViralityErrorDomain
                                              code:-57
                                          userInfo:userInfo];
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(NO,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -1359,10 +1325,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(NO,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@/setcustomurl",SERVER_URL]];
@@ -1441,10 +1405,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(NO,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -1457,10 +1419,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(NO,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@/updateuserlocationinfo",SERVER_URL]];
     NSError *error = nil;
@@ -1560,10 +1520,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(NO,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -1576,10 +1534,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(NO,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@/redeemrewards",SERVER_URL]];
     NSError *error = nil;
@@ -1657,10 +1613,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -1673,10 +1627,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     NSArray * growthHacks = @[@"Word_of_Mouth",@"Customer_Retention",@"Loyalty_Program",@"All"];
@@ -1787,10 +1739,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -1803,10 +1753,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     __block BOOL  dataExists = FALSE;
@@ -1896,10 +1844,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -1912,10 +1858,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@/getreferrerdetails",SERVER_URL]];
@@ -2093,10 +2037,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -2109,10 +2051,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(nil,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     NSArray * growthHacks = @[@"Word_of_Mouth",@"Customer_Retention",@"Loyalty_Program",@"All"];
@@ -2326,59 +2266,112 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
 }
 
 
-+(BOOL)checkRI:(NSString*)apiKey
++ (void)checkRI:(NSString *)apiKey
 {
     TCSTART
-    BOOL success = FALSE;
+    NSLog(@"🔎 userkey before checkRI decision = %@",
+          [[NSUserDefaults standardUserDefaults] valueForKey:@"userkey"]);
     isInitialising = TRUE;
-    NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@/%@",RI_URL,apiKey]];
-    NSURLResponse * response;
-    NSError * error;
-    DLog(@"check RI request %@",[NSString stringWithFormat:@"%@/%@",RI_URL,apiKey]);
     
-    NSMutableURLRequest *request=[NSMutableURLRequest
-                                  requestWithURL:url
-                                  cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:30];
+    NSURL *url = [NSURL URLWithString:
+                  [NSString stringWithFormat:@"%@/%@", RI_URL, apiKey]];
+    
+    NSMutableURLRequest *request =
+    [NSMutableURLRequest requestWithURL:url
+                            cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
+                        timeoutInterval:30];
+    
     [request setHTTPMethod:@"GET"];
-    NSData * data =  [Utility sendSynchronousRequest:request returningResponse:&response error:&error AndretryNumber:0];
-    if (data.length > 0 && error == nil)
-    {
-        NSDictionary *responseString = [NSJSONSerialization JSONObjectWithData:data
-                                                                       options:0
-                                                                         error:NULL];
-        NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse*)response;
-        if ([response respondsToSelector:@selector(allHeaderFields)]) {
-            NSDictionary *dictionary = [httpResponse allHeaderFields];
-            //    DLog(@"%d",[httpResponse statusCode]);
-            if([dictionary objectForKey:@"x-version-av1.1"])
-            [[NSUserDefaults standardUserDefaults] setValue:[dictionary valueForKey:@"x-version-av1.1"] forKey:@"x-version-av1.1"];
-            else
-                [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"x-version-av1.1"];
-        }
-        DLog(@"check RI response  %@",responseString);
-        if ([responseString objectForKey:@"success"]&&[[responseString valueForKey:@"success"] boolValue])
-            success = TRUE;
-        
-        if ([responseString objectForKey:@"success"]&&[[responseString valueForKey:@"success"] boolValue]&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
-            [self registerUser:apiKey];
-        }else if ([[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"])
-        {
-            [[NSNotificationCenter defaultCenter] postNotificationName:@"referrerDetails" object:nil];
-            [self getCampaings:apiKey];
-            [self recordUserStats:apiKey];
-            [self checkUserDetailsQueue];
-            [self checkConversionQueue:apiKey];
-            [self checkSocialActionQueue:apiKey];
-        }
-        if (!responseString) {
-            isInitialising = FALSE;
-        }
-        
-    }else
-        isInitialising=FALSE;
-
     
-    return success;
+    NSURLSessionDataTask *task =
+    [[NSURLSession sharedSession] dataTaskWithRequest:request
+                                    completionHandler:^(NSData *data,
+                                                        NSURLResponse *response,
+                                                        NSError *error)
+    {
+        if (error || data.length == 0) {
+            NSLog(@"checkRI error: %@", error);
+
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[NSNotificationCenter defaultCenter]
+                    postNotificationName:@"referrerDetails"
+                    object:nil];
+            });
+
+            isInitialising = FALSE;
+            return;
+        }
+
+        NSLog(@"Raw checkRI data: %@", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
+        NSLog(@"HTTP Status: %ld", (long)((NSHTTPURLResponse *)response).statusCode);
+        
+        NSDictionary *responseDict =
+        [NSJSONSerialization JSONObjectWithData:data
+                                        options:0
+                                          error:nil];
+        
+        if (!responseDict) {
+            NSLog(@"JSON parsing failed.");
+
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[NSNotificationCenter defaultCenter]
+                    postNotificationName:@"referrerDetails"
+                    object:nil];
+            });
+
+            isInitialising = FALSE;
+            return;
+        }
+        
+        NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+        
+        if ([httpResponse respondsToSelector:@selector(allHeaderFields)]) {
+            NSDictionary *headers = httpResponse.allHeaderFields;
+            
+            if (headers[@"x-version-av1.1"]) {
+                [[NSUserDefaults standardUserDefaults]
+                 setValue:headers[@"x-version-av1.1"]
+                 forKey:@"x-version-av1.1"];
+            } else {
+                [[NSUserDefaults standardUserDefaults]
+                 removeObjectForKey:@"x-version-av1.1"];
+            }
+            NSLog(@"✅ Saved x-version header = %@",
+                  [[NSUserDefaults standardUserDefaults] valueForKey:@"x-version-av1.1"]);
+
+        }
+        
+        NSLog(@"checkRI response: %@", responseDict);
+        
+        BOOL success =
+        [responseDict[@"success"] boolValue];
+        
+        if (success && ![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self registerUser:apiKey];
+            });
+            
+        } else if ([[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+
+                   [[NSNotificationCenter defaultCenter]
+                    postNotificationName:@"referrerDetails"
+                    object:nil];
+
+                   [self getCampaings:apiKey];
+                   [self recordUserStats:apiKey];
+                   [self checkUserDetailsQueue];
+                   [self checkConversionQueue:apiKey];
+                   [self checkSocialActionQueue:apiKey];
+               });
+        }
+        
+        isInitialising = FALSE;
+    }];
+    
+    [task resume];
     
     TCEND
 }
@@ -2416,14 +2409,22 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
     
 }
 
-+(UIWindow*)keyWindow {
-    Class UIApplicationClass = NSClassFromString(@"UIApplication");
-    if(UIApplicationClass){
-    UIWindow *keyWindow = [UIApplicationClass sharedApplication].keyWindow;
-    if (keyWindow) return keyWindow;
++ (UIWindow *)activeWindow {
+    UIWindow *activeWindow = nil;
+    
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if (scene.activationState == UISceneActivationStateForegroundActive &&
+            [scene isKindOfClass:UIWindowScene.class]) {
+            
+            UIWindowScene *windowScene = (UIWindowScene *)scene;
+            activeWindow = windowScene.windows.firstObject;
+            break;
+        }
     }
-    return nil;
+    
+    return activeWindow;
 }
+
 
 +(void)attributeBasedonCookie:(NSString*)apiKey
 {
@@ -2574,6 +2575,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                  
         
                  [[NSUserDefaults standardUserDefaults] setValue:[response valueForKey:@"userkey"] forKey:@"userkey"];
+                 NSLog(@"✅ Saved userkey = %@",
+                       [[NSUserDefaults standardUserDefaults] valueForKey:@"userkey"]);
                  tempUserKey = [response valueForKey:@"userkey"];
                  [[NSUserDefaults standardUserDefaults] setValue:[response valueForKey:@"hasReferrer"] forKey:@"hasReferrer"];
                  if(![[response valueForKey:@"ReferrerCode"] isEqual:[NSNull null]]){
@@ -2857,6 +2860,12 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
 
 +(void)getCampaings:(NSString*)apiKey
 {
+    NSLog(@"🔥 getCampaings CALLED");
+    NSLog(@"Current userkey = %@",
+          [[NSUserDefaults standardUserDefaults] valueForKey:@"userkey"]);
+    NSLog(@"Current x-version = %@",
+          [[NSUserDefaults standardUserDefaults] valueForKey:@"x-version-av1.1"]);
+
     TCSTART
     NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@/getcampaign",SERVER_URL_V2]];
     NSError *error = nil;
@@ -2939,10 +2948,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(NO,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -2955,10 +2962,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(NO,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -3095,10 +3100,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(NO,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (!isInitialising&&![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -3111,10 +3114,8 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                                              code:-57
                                          userInfo:userInfo];
         
-        if (![self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]]) {
-            completion(NO,error);
-            return;
-        }
+        [self checkRI:[[NSUserDefaults standardUserDefaults] objectForKey:@"AVapiKey"]];
+
     }
     
     if (![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
@@ -3280,7 +3281,7 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
     NSString *appuserid = [[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"] ?: @"";
     
     // API endpoint as per requirements
-    NSString *endpoint = [NSString stringWithFormat:@"%@/submit/%@", SERVER_URL_V21, apiKey];
+    NSString *endpoint = [NSString stringWithFormat:@"%@/submiturl/%@", SERVER_URL_V21, apiKey];
     NSURL *requestURL = [NSURL URLWithString:endpoint];
 
     NSMutableDictionary *params = [NSMutableDictionary dictionary];
