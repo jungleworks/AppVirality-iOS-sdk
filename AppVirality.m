@@ -2533,12 +2533,25 @@ static AVCookieAttributionDelegate *cookieAttributionDelegate;
         }
         secondWindow.rootViewController = windowRootController;
         [secondWindow makeKeyAndVisible];
-        // Alpha must stay at full opacity: WebKit deprioritizes/throttles page loads for
-        // views it doesn't consider genuinely visible (near-zero alpha included), which
-        // was silently preventing didCompleteInitialLoad: from ever firing. This trades
-        // away true invisibility for a brief, real Safari-view flash during launch, but
-        // is required for the attribution check to actually complete.
+        // Alpha must stay at full opacity on secondWindow itself: WebKit deprioritizes/
+        // throttles page loads for views it doesn't consider genuinely visible (near-zero
+        // alpha included), which was silently preventing didCompleteInitialLoad: from ever
+        // firing. So secondWindow/safController must remain full-size and fully opaque.
+        // To keep this invisible to the user anyway, a separate opaque "curtain" window is
+        // layered above it (below) — a different window, so it doesn't change secondWindow's
+        // own frame/alpha and WebKit still treats the page as visible.
         [secondWindow setAlpha:1.0];
+
+        UIWindow *curtainWindow = [[UIWindow alloc] initWithFrame:windowFrame];
+        if (@available(iOS 13.0, *)) {
+            if (activeWindow.windowScene) {
+                curtainWindow.windowScene = activeWindow.windowScene;
+            }
+        }
+        curtainWindow.windowLevel = UIWindowLevelStatusBar + 1;
+        curtainWindow.rootViewController = [[UIViewController alloc] init];
+        curtainWindow.rootViewController.view.backgroundColor = activeWindow.backgroundColor ?: [UIColor whiteColor];
+        curtainWindow.hidden = NO;
 
         cookieAttributionDelegate = [[AVCookieAttributionDelegate alloc] init];
         __block BOOL attributionCompleted = NO;
@@ -2550,6 +2563,8 @@ static AVCookieAttributionDelegate *cookieAttributionDelegate;
             [[NSNotificationCenter defaultCenter] postNotificationName:@"doneCookieBasedAttribution" object:nil userInfo:[NSDictionary dictionaryWithObject:[NSNumber numberWithBool:success] forKey:@"cookieAttributionAttempt"]];
             [windowRootController dismissViewControllerAnimated:NO completion:NULL];
             secondWindow.rootViewController = nil;
+            curtainWindow.hidden = YES;
+            curtainWindow.rootViewController = nil;
         };
         cookieAttributionDelegate.onComplete = ^(BOOL didLoadSuccessfully) {
             DLog(@"didCompleteInitialLoad = %d", didLoadSuccessfully);
