@@ -2618,6 +2618,10 @@ static AVCookieAttributionDelegate *cookieAttributionDelegate;
     
     if(!tempUserKey.length)
     {
+        tempUserKey = [[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"];
+    }
+    if(!tempUserKey.length)
+    {
         tempUserKey = [[[Utility GetTempUserKey] stringByReplacingOccurrencesOfString:@"-" withString:@""] lowercaseString];
     }
     
