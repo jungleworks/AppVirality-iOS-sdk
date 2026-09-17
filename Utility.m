@@ -565,15 +565,46 @@ static NSOperationQueue *connectionQueue;
     NSString *cachedAgent = [[NSUserDefaults standardUserDefaults] objectForKey:@"userAgent"];
     if (cachedAgent) return cachedAgent;
 
+    // BUG (#3): userAgentStringWithCompletion dispatch_async's to the main queue, then this
+    // method blocked the CALLING thread on a semaphore waiting for that block to signal it.
+    // If this method is ever called ON the main thread before the cache is warm, that's a
+    // permanent deadlock: the main thread is blocked on the semaphore, but the main queue —
+    // the only queue that could run the block that signals it — never gets a chance to spin.
+    // Original code, kept for reference:
+    // __block NSString *agent = @"Mozilla/5.0 (iPhone; CPU iPhone OS like Mac OS X)";
+    // dispatch_semaphore_t sema = dispatch_semaphore_create(0);
+    // [self userAgentStringWithCompletion:^(NSString * _Nonnull ua) {
+    //     agent = ua;
+    //     dispatch_semaphore_signal(sema);
+    // }];
+    // dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
+    // return agent;
+
+    // FIX (#3): never block a queue we might already be on. Off the main thread, the
+    // original semaphore wait is safe (the main queue is free to run the dispatched block).
+    // On the main thread, pump the run loop instead of blocking it outright, so the
+    // (also main-queue) completion handler still gets a chance to run; fall back to the
+    // default agent string if it doesn't resolve within a bounded timeout.
     __block NSString *agent = @"Mozilla/5.0 (iPhone; CPU iPhone OS like Mac OS X)";
+    __block BOOL finished = NO;
     dispatch_semaphore_t sema = dispatch_semaphore_create(0);
 
     [self userAgentStringWithCompletion:^(NSString * _Nonnull ua) {
         agent = ua;
+        finished = YES;
         dispatch_semaphore_signal(sema);
     }];
 
-    dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
+    if ([NSThread isMainThread]) {
+        NSDate *timeoutDate = [NSDate dateWithTimeIntervalSinceNow:5.0];
+        while (!finished && [timeoutDate timeIntervalSinceNow] > 0) {
+            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode
+                                      beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+        }
+    } else {
+        dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
+    }
+
     return agent;
 }
 

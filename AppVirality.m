@@ -32,6 +32,25 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
 //}
 //@end
 
+// FIX: completes the abandoned delegate stub above — attributeBasedonCookie: was firing
+// "doneCookieBasedAttribution" from presentViewController's completion handler, which only
+// signals the presentation ANIMATION finished, not that the tracking-pixel page inside the
+// SFSafariViewController actually loaded. This delegate lets us wait for the real signal
+// (didCompleteInitialLoad:) instead.
+@interface AVCookieAttributionDelegate : NSObject <SFSafariViewControllerDelegate>
+@property (nonatomic, copy) void (^onComplete)(BOOL didLoadSuccessfully);
+@end
+
+@implementation AVCookieAttributionDelegate
+- (void)safariViewController:(SFSafariViewController *)controller didCompleteInitialLoad:(BOOL)didLoadSuccessfully {
+    if (self.onComplete) {
+        self.onComplete(didLoadSuccessfully);
+    }
+}
+@end
+
+static AVCookieAttributionDelegate *cookieAttributionDelegate;
+
 @implementation AppVirality
 
 
@@ -1939,6 +1958,7 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
 {
     
     TCSTART
+
     cookieBasedAttribution = YES;
     isInitialising = TRUE;
     if (!apiKey.length) {
@@ -2272,10 +2292,20 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
     NSLog(@"🔎 userkey before checkRI decision = %@",
           [[NSUserDefaults standardUserDefaults] valueForKey:@"userkey"]);
     isInitialising = TRUE;
-    
+
+    // BUG (#5): this pre-check carried only the apikey, no deviceId, so server-side
+    // correlation of "does this device have a pending referral click" had nothing to
+    // go on but raw request IP — which is exactly what Private Relay/NAT degrade.
+    // Original code, kept for reference:
+    // NSURL *url = [NSURL URLWithString:
+    //               [NSString stringWithFormat:@"%@/%@", RI_URL, apiKey]];
+
+    // FIX (#5): include deviceId so the server has a stable identifier to match
+    // against, independent of the client's current IP address.
+    NSString *checkRIDeviceId = [[[Utility GetDeviceID] stringByReplacingOccurrencesOfString:@"-" withString:@""] lowercaseString];
     NSURL *url = [NSURL URLWithString:
-                  [NSString stringWithFormat:@"%@/%@", RI_URL, apiKey]];
-    
+                  [NSString stringWithFormat:@"%@/%@?deviceId=%@", RI_URL, apiKey, checkRIDeviceId]];
+
     NSMutableURLRequest *request =
     [NSMutableURLRequest requestWithURL:url
                             cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
@@ -2347,13 +2377,13 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
         [responseDict[@"success"] boolValue];
         
         if (success && ![[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
-            
+
             dispatch_async(dispatch_get_main_queue(), ^{
                 [self registerUser:apiKey];
             });
-            
+
         } else if ([[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"]) {
-            
+
             dispatch_async(dispatch_get_main_queue(), ^{
 
                    [[NSNotificationCenter defaultCenter]
@@ -2367,7 +2397,23 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                    [self checkSocialActionQueue:apiKey];
                });
         }
-        
+        // BUG (#2): no else here — if success == false AND there's no existing userkey
+        // (invalid apikey, app disabled server-side, etc.), neither branch above runs,
+        // so "referrerDetails" never posts, and initWithApiKey's OnCompletion (which
+        // waits on that notification) hangs forever with no error surfaced.
+        else {
+            // FIX (#2): always post the notification so OnCompletion fires, even on failure.
+            NSError *riError = [NSError errorWithDomain:NSAppViralityErrorDomain
+                                                     code:-58
+                                                 userInfo:@{NSLocalizedDescriptionKey: @"RI check failed and no existing userkey found"}];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[NSNotificationCenter defaultCenter]
+                    postNotificationName:@"referrerDetails"
+                    object:nil
+                    userInfo:@{@"errorInfo": riError}];
+            });
+        }
+
         isInitialising = FALSE;
     }];
     
@@ -2429,49 +2475,127 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
 +(void)attributeBasedonCookie:(NSString*)apiKey
 {
     TCSTART
+    DLog(@"attributeBasedonCookie called");
     if ([[UIDevice currentDevice] systemVersion].integerValue >= 9 && cookieBasedAttribution)
     {
         Class SFSafariViewControllerClass = NSClassFromString(@"SFSafariViewController");
         if (SFSafariViewControllerClass) {
         dispatch_sync(dispatch_get_main_queue(), ^{
 
-        id safController = [[SFSafariViewControllerClass alloc] initWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"%@/attr/ios/clk/%@/%@?%@",SHARE_URL,apiKey,[[[Utility GetDeviceID] stringByReplacingOccurrencesOfString:@"-" withString:@""] lowercaseString],[NSString stringWithFormat:@"%d", rand()]]]];
-        
-        UIViewController *windowRootController = [[UIViewController alloc] init];
-//        UIWindow *primaryWindow = [self keyWindow];
-        UIWindow* secondWindow;
-        secondWindow = [[UIWindow alloc] initWithFrame:CGRectMake(0, 0, 0.5, 0.5)];
+        // BUG: two problems with the legacy window handling below (kept as a comment):
+        // 1) secondWindow was never attached to a UIWindowScene, required since iOS 13 —
+        //    on a modern multi-scene app this window can fail to become key/visible at
+        //    all, so the SFSafariViewController presented on it may never actually render
+        //    or let its network request complete.
+        // 2) "doneCookieBasedAttribution" fired from presentViewController's completion
+        //    handler, which only signals the presentation ANIMATION finished — not that
+        //    the tracking-pixel page inside the SFSafariViewController actually loaded.
+        //    The window was torn down immediately after, likely cancelling the in-flight
+        //    attribution request before the server ever processed it.
+        // Original code, kept for reference:
+        // id safController = [[SFSafariViewControllerClass alloc] initWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"%@/attr/ios/clk/%@/%@?%@",SHARE_URL,apiKey,[[[Utility GetDeviceID] stringByReplacingOccurrencesOfString:@"-" withString:@""] lowercaseString],[NSString stringWithFormat:@"%d", rand()]]]];
+        // UIViewController *windowRootController = [[UIViewController alloc] init];
+        // UIWindow* secondWindow;
+        // secondWindow = [[UIWindow alloc] initWithFrame:CGRectMake(0, 0, 0.5, 0.5)];
+        // secondWindow.rootViewController = windowRootController;
+        // [secondWindow makeKeyAndVisible];
+        // [secondWindow setAlpha:1.0];
+        // [windowRootController presentViewController:safController animated:YES completion:^{
+        //     [[NSNotificationCenter defaultCenter] postNotificationName:@"doneCookieBasedAttribution" object:nil userInfo:[NSDictionary dictionaryWithObject:[NSNumber numberWithBool:YES] forKey:@"cookieAttributionAttempt"]];
+        //     [secondWindow.rootViewController dismissViewControllerAnimated:NO completion:NULL];
+        //     secondWindow.rootViewController = nil;
+        // }];
 
-//            if (primaryWindow) {
-//                secondWindow = [[UIWindow alloc] initWithFrame:primaryWindow.bounds];
-//            } else {
-//                secondWindow = [[UIWindow alloc] initWithFrame:CGRectMake(0, 0, 0.5, 0.5)];
-//            }
+        // FIX: attach the overlay window to the app's real active scene, and wait for the
+        // SFSafariViewController's actual page load (via its delegate) before tearing
+        // anything down — with a bounded timeout as a safety net in case the delegate
+        // callback never fires.
+        NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@/attr/ios/clk/%@/%@?%@",SHARE_URL,apiKey,[[[Utility GetDeviceID] stringByReplacingOccurrencesOfString:@"-" withString:@""] lowercaseString],[NSString stringWithFormat:@"%d", rand()]]];
+        DLog(@"URL = %@", url);
+        id safController = [[SFSafariViewControllerClass alloc] initWithURL:url];
+
+        // BUG: secondWindow's frame was a near-zero 0.5x0.5 point rect, inherited from the
+        // original code's attempt to keep it "invisible." On a real device this makes
+        // SFSafariView's internal Auto Layout unsatisfiable (it reserves ~64pt at the top
+        // for its own toolbar, which cannot fit in a 0.5pt-tall container), forcing iOS to
+        // break a constraint to recover — confirmed via a real "Unable to simultaneously
+        // satisfy constraints" warning on device — and didCompleteInitialLoad: never fired
+        // as a result. FIX: give it a real, screen-sized frame so SFSafariView can lay out
+        // correctly (see the alpha comment below for why this can't be hidden by size).
+        UIWindow *activeWindow = [self activeWindow];
+        UIViewController *windowRootController = [[UIViewController alloc] init];
+        CGRect windowFrame = activeWindow ? activeWindow.bounds : [UIScreen mainScreen].bounds;
+        UIWindow *secondWindow = [[UIWindow alloc] initWithFrame:windowFrame];
+        if (@available(iOS 13.0, *)) {
+            if (activeWindow.windowScene) {
+                secondWindow.windowScene = activeWindow.windowScene;
+            }
+        }
         secondWindow.rootViewController = windowRootController;
         [secondWindow makeKeyAndVisible];
+        // Alpha must stay at full opacity on secondWindow itself: WebKit deprioritizes/
+        // throttles page loads for views it doesn't consider genuinely visible (near-zero
+        // alpha included), which was silently preventing didCompleteInitialLoad: from ever
+        // firing. So secondWindow/safController must remain full-size and fully opaque.
+        // To keep this invisible to the user anyway, a separate opaque "curtain" window is
+        // layered above it (below) — a different window, so it doesn't change secondWindow's
+        // own frame/alpha and WebKit still treats the page as visible.
         [secondWindow setAlpha:1.0];
-//            AppVirality2* av2=[[AppVirality2 alloc] init];
-//            safController.delegate = av2;
-        [windowRootController presentViewController:safController animated:YES completion:^{
-            //NSLog(@"Cookie based attribution completed");
-            [[NSNotificationCenter defaultCenter] postNotificationName:@"doneCookieBasedAttribution" object:nil userInfo:[NSDictionary dictionaryWithObject:[NSNumber numberWithBool:YES] forKey:@"cookieAttributionAttempt"]];
-            [secondWindow.rootViewController dismissViewControllerAnimated:NO completion:NULL];
+
+        UIWindow *curtainWindow = [[UIWindow alloc] initWithFrame:windowFrame];
+        if (@available(iOS 13.0, *)) {
+            if (activeWindow.windowScene) {
+                curtainWindow.windowScene = activeWindow.windowScene;
+            }
+        }
+        curtainWindow.windowLevel = UIWindowLevelStatusBar + 1;
+        curtainWindow.rootViewController = [[UIViewController alloc] init];
+        curtainWindow.rootViewController.view.backgroundColor = activeWindow.backgroundColor ?: [UIColor whiteColor];
+        curtainWindow.hidden = NO;
+
+        cookieAttributionDelegate = [[AVCookieAttributionDelegate alloc] init];
+        __block BOOL attributionCompleted = NO;
+        void (^finishAttribution)(BOOL) = ^(BOOL success) {
+            if (attributionCompleted) return;
+            attributionCompleted = YES;
+            cookieAttributionDelegate = nil;
+            DLog(@"doneCookieBasedAttribution");
+            [[NSNotificationCenter defaultCenter] postNotificationName:@"doneCookieBasedAttribution" object:nil userInfo:[NSDictionary dictionaryWithObject:[NSNumber numberWithBool:success] forKey:@"cookieAttributionAttempt"]];
+            [windowRootController dismissViewControllerAnimated:NO completion:NULL];
             secondWindow.rootViewController = nil;
-        }];
-            
+            curtainWindow.hidden = YES;
+            curtainWindow.rootViewController = nil;
+        };
+        cookieAttributionDelegate.onComplete = ^(BOOL didLoadSuccessfully) {
+            DLog(@"didCompleteInitialLoad = %d", didLoadSuccessfully);
+            finishAttribution(didLoadSuccessfully);
+        };
+        if ([safController respondsToSelector:@selector(setDelegate:)]) {
+            [safController setDelegate:cookieAttributionDelegate];
+        }
+
+        [windowRootController presentViewController:safController animated:YES completion:nil];
+        DLog(@"Safari Presented");
+
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(10.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            finishAttribution(NO);
+        });
+
             });
 
         }
         else
         {
+            DLog(@"doneCookieBasedAttribution");
             [[NSNotificationCenter defaultCenter] postNotificationName:@"doneCookieBasedAttribution" object:nil userInfo:[NSDictionary dictionaryWithObject:[NSNumber numberWithBool:NO] forKey:@"cookieAttributionAttempt"]];
         }
     }
     else
     {
+        DLog(@"doneCookieBasedAttribution");
         [[NSNotificationCenter defaultCenter] postNotificationName:@"doneCookieBasedAttribution" object:nil userInfo:[NSDictionary dictionaryWithObject:[NSNumber numberWithBool:NO] forKey:@"cookieAttributionAttempt"]];
     }
-    
+
     TCEND
 }
 
@@ -2492,6 +2616,10 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
     NSError *error = nil;
     NSString *adId = [Utility getAdvertiserID];
     
+    if(!tempUserKey.length)
+    {
+        tempUserKey = [[NSUserDefaults standardUserDefaults] objectForKey:@"userkey"];
+    }
     if(!tempUserKey.length)
     {
         tempUserKey = [[[Utility GetTempUserKey] stringByReplacingOccurrencesOfString:@"-" withString:@""] lowercaseString];
@@ -2598,21 +2726,31 @@ static NSDictionary* _Nullable userDetailsforInit = nil;
                  [self checkConversionQueue:apiKey];
                  [self checkSocialActionQueue:apiKey];
                  if ([[response valueForKey:@"hasReferrer"] boolValue]) {
-                     
+
                      if ([response valueForKey:@"ReferrerCode"]) {
                          referrerDetails =[(id)response replaceNullsWithObject:@""];
-                         
+
                          //save referrerDetails in userdefaults
                          [[NSUserDefaults standardUserDefaults] setObject:referrerDetails forKey:@"AV_ReferrerDetails"];
-                         
-                         if (![[response valueForKey:@"isExistingUser"] boolValue]) {
-                             //[[NSUserDefaults standardUserDefaults] setValue:[response valueForKey:@"isExistingUser"] forKey:@"AV_isExistingUser"];
-                             [self registerConversionEventWithApiKey:apiKey ForEvent:@{@"eventName":@"Install"} OnInstall:YES];
-                         }
+
+                         // BUG (#1): this gated the Install event on hasReferrer/ReferrerCode, so
+                         // automatic attribution failures (common under ITP/ATT/Private Relay for
+                         // link-based installs) silently dropped the Install event forever.
+                         // Original code, kept for reference:
+                         // if (![[response valueForKey:@"isExistingUser"] boolValue]) {
+                         //     [[NSUserDefaults standardUserDefaults] setValue:[response valueForKey:@"isExistingUser"] forKey:@"AV_isExistingUser"];
+                         //     [self registerConversionEventWithApiKey:apiKey ForEvent:@{@"eventName":@"Install"} OnInstall:YES];
+                         // }
                      }
                  }
-                 
-                 
+
+                 // FIX (#1): Install must fire for every new user regardless of whether automatic
+                 // referrer attribution (hasReferrer) succeeded.
+                 if (![[response valueForKey:@"isExistingUser"] boolValue]) {
+                     [self registerConversionEventWithApiKey:apiKey ForEvent:@{@"eventName":@"Install"} OnInstall:YES];
+                 }
+
+
                  //This is required for getreferrerdetails callback
                  if (referrerDetails) {
                      [[NSNotificationCenter defaultCenter] postNotificationName:@"referrerDetails" object:nil userInfo:[NSDictionary dictionaryWithObject:referrerDetails forKey:@"referrerDetails"]];
