@@ -188,6 +188,25 @@ static NSOperationQueue *connectionQueue;
     
 }
 
+// Base for referral, share and QR links. Empty domain -> SHARE_URL. A domain without a scheme
+// gets https://; an explicit http:// or https:// (any case) is kept as the dashboard set it.
++(NSString*)shareBaseURLForCustomDomain:(id)customDomain
+{
+    if (![customDomain isKindOfClass:[NSString class]]) {
+        return SHARE_URL;
+    }
+    NSString * domain = [customDomain stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (domain.length == 0) {
+        return SHARE_URL;
+    }
+    NSStringCompareOptions prefixOptions = NSCaseInsensitiveSearch | NSAnchoredSearch;
+    if ([domain rangeOfString:@"https://" options:prefixOptions].location != NSNotFound ||
+        [domain rangeOfString:@"http://" options:prefixOptions].location != NSNotFound) {
+        return domain;
+    }
+    return [@"https://" stringByAppendingString:domain];
+}
+
 +(NSDictionary*)parseCampaignInfo:(NSDictionary*)campaignInfo
 {
     NSMutableDictionary * campaignDict = [NSMutableDictionary dictionary];
@@ -211,12 +230,12 @@ static NSOperationQueue *connectionQueue;
         
         
         if ([key isEqualToString:@"socialactions"]) {
-            [campaignDict setValue:[NSString stringWithFormat:@"%@/%@",[[campaignInfo valueForKey:@"customdomain"] isEqualToString:@""]?SHARE_URL:[NSString stringWithFormat:@"http://%@",[campaignInfo valueForKey:@"customdomain"]],[campaignInfo valueForKey:@"shortcode"]] forKey:@"shareURL"];
+            [campaignDict setValue:[NSString stringWithFormat:@"%@/%@",[self shareBaseURLForCustomDomain:[campaignInfo valueForKey:@"customdomain"]],[campaignInfo valueForKey:@"shortcode"]] forKey:@"shareURL"];
             
             NSMutableArray * socialActions = [NSMutableArray array];
             for (NSDictionary * socialAction in [campaignInfo valueForKey:@"socialactions"]) {
                 NSMutableDictionary * newSocialAction = [NSMutableDictionary dictionaryWithDictionary:socialAction];
-                NSString *shareUrl = [NSString stringWithFormat:@"%@/%@/%@",[[campaignInfo valueForKey:@"customdomain"] isEqualToString:@""]?SHARE_URL:[NSString stringWithFormat:@"http://%@",[campaignInfo valueForKey:@"customdomain"]],[campaignInfo valueForKey:@"shortcode"],[socialAction valueForKey:@"socialActionId"]];
+                NSString *shareUrl = [NSString stringWithFormat:@"%@/%@/%@",[self shareBaseURLForCustomDomain:[campaignInfo valueForKey:@"customdomain"]],[campaignInfo valueForKey:@"shortcode"],[socialAction valueForKey:@"socialActionId"]];
                 [newSocialAction setValue:shareUrl forKey:@"shareUrl"];
                 NSArray * socialKeys = @[@"campaignSocialActionId",@"displayOrder",@"shareImageUrl",@"shareMessage",@"shareTitle",@"shareUrl",@"socialActionId",@"socialActionName"];
                 for (NSString * socialKey in [newSocialAction allKeys]) {
@@ -241,7 +260,26 @@ static NSOperationQueue *connectionQueue;
         }
     }
     
-    NSArray * keys = @[@"CampaignId",@"CampaignName",@"OfferTitle",@"OfferTitleColor",@"OfferDescription",@"OfferDescriptionColor",@"CampaignImage",@"CampaignBGImage",@"CampaignBGColor",@"LaunchMessage",@"LaunchButtonText",@"RemindButtonText",@"LaunchMsgColor",@"LaunchBGColor",@"LaunchButtonBGColor",@"EnableMini",@"EnablePopup",@"LaunchButtonTextColor",@"LaunchIconId",@"socialactions",@"shortcode",@"shareURL",@"referralcode"];
+    // QR link: {host}/{shortcode}/1040. Built from host + shortcode, never by appending to a
+    // social action's shareUrl — those already end in a channel id, and the landing page reads
+    // the second segment as the channel, so ".../CODE/3/1040" would credit the scan to WhatsApp.
+    // Left unset when shortcode is empty: "host//1040" would still scan and open the wrong page.
+    NSString * qrShortCode = [campaignInfo valueForKey:@"shortcode"];
+    if ([qrShortCode isKindOfClass:[NSString class]] && qrShortCode.length > 0) {
+        // Keep scheme + host only, same as the Android SDK.
+        NSString * qrHost = [self shareBaseURLForCustomDomain:[campaignInfo valueForKey:@"customdomain"]];
+        NSRange schemeEnd = [qrHost rangeOfString:@"://"];
+        if (schemeEnd.location != NSNotFound) {
+            NSUInteger hostStart = NSMaxRange(schemeEnd);
+            NSRange pathStart = [qrHost rangeOfString:@"/" options:0 range:NSMakeRange(hostStart, qrHost.length - hostStart)];
+            if (pathStart.location != NSNotFound) {
+                qrHost = [qrHost substringToIndex:pathStart.location];
+            }
+        }
+        [campaignDict setValue:[NSString stringWithFormat:@"%@/%@/%@",qrHost,qrShortCode,QR_SOCIAL_ACTION_ID] forKey:@"qrShareURL"];
+    }
+
+    NSArray * keys = @[@"CampaignId",@"CampaignName",@"OfferTitle",@"OfferTitleColor",@"OfferDescription",@"OfferDescriptionColor",@"CampaignImage",@"CampaignBGImage",@"CampaignBGColor",@"LaunchMessage",@"LaunchButtonText",@"RemindButtonText",@"LaunchMsgColor",@"LaunchBGColor",@"LaunchButtonBGColor",@"EnableMini",@"EnablePopup",@"LaunchButtonTextColor",@"LaunchIconId",@"socialactions",@"shortcode",@"shareURL",@"qrShareURL",@"referralcode"];
     
     for (NSString * campaignKey in [campaignDict allKeys]) {
         if (![keys containsObject:campaignKey]) {
@@ -602,7 +640,7 @@ static NSOperationQueue *connectionQueue;
                                       beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
         }
     } else {
-        dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
+        dispatch_semaphore_wait(sema, dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)));
     }
 
     return agent;

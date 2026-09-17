@@ -8,6 +8,8 @@
 
 #import "AppVirality.h"
 #import "Utility.h"
+#import "AVQRCodeViewController.h"
+#import <CoreImage/CoreImage.h>
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 90000
 @import SafariServices;
 #import <SafariServices/SafariServices.h>
@@ -149,6 +151,229 @@ static AVCookieAttributionDelegate *cookieAttributionDelegate;
     
 }
 
+
+#pragma mark - Referral QR code
+// Nothing in this section records a social action. Displaying a QR shares nothing: the share
+// happens only when someone else scans it, and the server records that at the landing page.
+// Recording here would count every popup open as an invite, and invite counts never go down.
+
++ (NSError *)qrCodeErrorWithReason:(NSString *)reason
+{
+    NSDictionary *userInfo = @{
+                               NSLocalizedDescriptionKey: NSLocalizedString(@"Operation was unsuccessful.", nil),
+                               NSLocalizedFailureReasonErrorKey: reason,
+                               NSLocalizedRecoverySuggestionErrorKey: @""
+                               };
+    return [NSError errorWithDomain:NSAppViralityErrorDomain code:-57 userInfo:userInfo];
+}
+
+// Shared by the public QR methods and AVQRCodeViewController. Fetches campaigns first if they
+// are not cached (getGrowthHack does that); with campaigns cached it makes no network call.
+// Always completes on the main thread.
++ (void)loadQRCodeWithSize:(CGFloat)size completion:(void (^)(UIImage *image, NSDictionary *campaignDetails, NSError *error))completion
+{
+    if (!completion) {
+        return;
+    }
+    void (^finish)(UIImage *, NSDictionary *, NSError *) = ^(UIImage *image, NSDictionary *campaignDetails, NSError *error) {
+        if ([NSThread isMainThread]) {
+            completion(image, campaignDetails, error);
+        } else {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completion(image, campaignDetails, error);
+            });
+        }
+    };
+    if (size <= 0) {
+        finish(nil, nil, [self qrCodeErrorWithReason:@"QR code size must be greater than zero."]);
+        return;
+    }
+    [self getGrowthHack:GrowthHackTypeWordOfMouth completion:^(NSDictionary *campaignDetails, NSError *error) {
+        if (!campaignDetails && error) {
+            finish(nil, nil, error);
+            return;
+        }
+        // Never fall back to a partial or alternative URL: a QR with the wrong URL still scans
+        // and looks like success while crediting the wrong channel.
+        NSString *qrShareURL = [campaignDetails valueForKey:@"qrShareURL"];
+        if (![qrShareURL isKindOfClass:[NSString class]] || qrShareURL.length == 0) {
+            finish(nil, campaignDetails, [self qrCodeErrorWithReason:@"Referral QR code is not available yet. Please try again after the user is registered."]);
+            return;
+        }
+        DLog(@"QR share URL %@", qrShareURL);
+        UIImage *image = [self qrCodeImageForString:qrShareURL size:size];
+        if (!image) {
+            finish(nil, campaignDetails, [self qrCodeErrorWithReason:@"Could not generate the QR code."]);
+            return;
+        }
+        finish(image, campaignDetails, nil);
+    }];
+}
+
++ (UIImage *)qrCodeImageForString:(NSString *)string size:(CGFloat)size
+{
+    NSData *data = [string dataUsingEncoding:NSUTF8StringEncoding];
+    CIFilter *filter = [CIFilter filterWithName:@"CIQRCodeGenerator"];
+    if (!data || !filter) {
+        return nil;
+    }
+    [filter setValue:data forKey:@"inputMessage"];
+    [filter setValue:@"M" forKey:@"inputCorrectionLevel"];
+    CIImage *qrImage = filter.outputImage;
+    if (!qrImage || CGRectIsEmpty(qrImage.extent)) {
+        return nil;
+    }
+
+    // CIQRCodeGenerator emits one pixel per module. Scale by a whole number with nearest-neighbour
+    // sampling so module edges stay hard; default interpolation blurs them and scanners struggle.
+    CGFloat screenScale = [UIScreen mainScreen].scale;
+    CGFloat pixelSize = size * screenScale;
+    CGFloat moduleScale = MAX(1, floor(pixelSize / CGRectGetWidth(qrImage.extent)));
+    CIImage *scaledImage = [[qrImage imageBySamplingNearest] imageByApplyingTransform:CGAffineTransformMakeScale(moduleScale, moduleScale)];
+    CGImageRef cgImage = [[CIContext contextWithOptions:nil] createCGImage:scaledImage fromRect:scaledImage.extent];
+    if (!cgImage) {
+        return nil;
+    }
+
+    // Centre it on a white square of exactly the requested size, drawn pixel for pixel.
+    UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
+    format.scale = screenScale;
+    format.opaque = YES;
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(size, size) format:format];
+    UIImage *codeImage = [UIImage imageWithCGImage:cgImage scale:screenScale orientation:UIImageOrientationUp];
+    CGFloat codePoints = CGImageGetWidth(cgImage) / screenScale;
+    CGFloat origin = floor((pixelSize - CGImageGetWidth(cgImage)) / 2) / screenScale;
+    UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
+        [[UIColor whiteColor] setFill];
+        UIRectFill(CGRectMake(0, 0, size, size));
+        CGContextSetInterpolationQuality(context.CGContext, kCGInterpolationNone);
+        [codeImage drawInRect:CGRectMake(origin, origin, codePoints, codePoints)];
+    }];
+    CGImageRelease(cgImage);
+    return image;
+}
+
++ (void)showQRCodeFromViewController:(UIViewController *)viewController completion:(void (^)(NSError *error))completion
+{
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self showQRCodeFromViewController:viewController completion:completion];
+        });
+        return;
+    }
+    if (!viewController) {
+        if (completion) {
+            completion([self qrCodeErrorWithReason:@"A view controller is required to show the QR code."]);
+        }
+        return;
+    }
+    AVQRCodeViewController *qrViewController = [[AVQRCodeViewController alloc] initWithCompletion:completion];
+    [viewController presentViewController:qrViewController animated:YES completion:nil];
+}
+
++ (void)qrCodeImageWithSize:(CGFloat)size completion:(void (^)(UIImage *image, NSError *error))completion
+{
+    if (!completion) {
+        return;
+    }
+    [self loadQRCodeWithSize:size completion:^(UIImage *image, NSDictionary *campaignDetails, NSError *error) {
+        completion(image, error);
+    }];
+}
+
+// iOS terminates the app on its first photo-library write if the host app's Info.plist lacks
+// this key, so the SDK never attempts one unless the client declared it.
++ (BOOL)canAddToPhotoLibrary
+{
+    return [[NSBundle mainBundle] objectForInfoDictionaryKey:@"NSPhotoLibraryAddUsageDescription"] != nil;
+}
+
++ (void)shareQRCodeImage:(UIImage *)image fromViewController:(UIViewController *)viewController
+{
+    if (!image || !viewController) {
+        return;
+    }
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self shareQRCodeImage:image fromViewController:viewController];
+        });
+        return;
+    }
+    UIActivityViewController *activityViewController = [[UIActivityViewController alloc] initWithActivityItems:@[image] applicationActivities:nil];
+    if (![self canAddToPhotoLibrary]) {
+        // The sheet's "Save Image" would hit the same missing-key crash.
+        activityViewController.excludedActivityTypes = @[UIActivityTypeSaveToCameraRoll];
+    }
+    UIPopoverPresentationController *popover = activityViewController.popoverPresentationController;
+    if (popover) {
+        CGRect bounds = viewController.view.bounds;
+        popover.sourceView = viewController.view;
+        popover.sourceRect = CGRectMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds), 0, 0);
+        popover.permittedArrowDirections = 0;
+    }
+    [viewController presentViewController:activityViewController animated:YES completion:nil];
+}
+
++ (void)saveQRCodeImage:(UIImage *)image fromViewController:(UIViewController *)viewController
+{
+    if (!image || !viewController) {
+        return;
+    }
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self saveQRCodeImage:image fromViewController:viewController];
+        });
+        return;
+    }
+    if (![self canAddToPhotoLibrary]) {
+        // Mirrors Android on API 24-28: no permission-free direct save, so hand over to the share
+        // sheet, where the user can still send the image anywhere.
+        [self shareQRCodeImage:image fromViewController:viewController];
+        return;
+    }
+    UIImageWriteToSavedPhotosAlbum(image, self, @selector(qrCodeImage:didFinishSavingWithError:contextInfo:), (__bridge_retained void *)viewController);
+}
+
++ (void)qrCodeImage:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo
+{
+    UIViewController *viewController = (__bridge_transfer UIViewController *)contextInfo;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self showQRToast:error ? @"Could not save the QR image." : @"QR code saved to Photos" inView:viewController.view];
+    });
+}
+
++ (void)showQRToast:(NSString *)message inView:(UIView *)view
+{
+    UIView *hostView = view.window ?: view;
+    if (!hostView) {
+        return;
+    }
+    UILabel *toastLabel = [[UILabel alloc] init];
+    toastLabel.text = message;
+    toastLabel.font = [UIFont systemFontOfSize:14];
+    toastLabel.textColor = [UIColor whiteColor];
+    toastLabel.textAlignment = NSTextAlignmentCenter;
+    toastLabel.backgroundColor = [UIColor colorWithWhite:0 alpha:0.75];
+    toastLabel.layer.cornerRadius = 8;
+    toastLabel.layer.masksToBounds = YES;
+    [toastLabel sizeToFit];
+    CGFloat width = MIN(CGRectGetWidth(toastLabel.bounds) + 32, CGRectGetWidth(hostView.bounds) - 40);
+    toastLabel.frame = CGRectMake(0, 0, width, 36);
+    toastLabel.center = CGPointMake(CGRectGetMidX(hostView.bounds), CGRectGetMaxY(hostView.bounds) - 120);
+    toastLabel.alpha = 0;
+    [hostView addSubview:toastLabel];
+    [UIView animateWithDuration:0.2 animations:^{
+        toastLabel.alpha = 1;
+    } completion:^(BOOL finished) {
+        [UIView animateWithDuration:0.3 delay:1.5 options:0 animations:^{
+            toastLabel.alpha = 0;
+        } completion:^(BOOL done) {
+            [toastLabel removeFromSuperview];
+        }];
+    }];
+}
+
+#pragma mark -
 
 + (void)showGrowthHack:(GrowthHackType)growthHack  FromViewController:(UIViewController*)viewController completion:(void (^)(NSDictionary* campaignDetails,NSError *error))completion
 {

@@ -55,6 +55,21 @@ typedef enum : NSUInteger {
                 campaignId:(NSInteger)campaignId
                      appId:(NSInteger)appId
                  completion:(void (^)(NSDictionary *response, NSError *error))completion;
+
+/* Referral QR code for the Word of Mouth campaign. Safe to call any time after init: campaign data is
+   fetched first if it is not loaded yet. None of these record a social action — the scan is recorded
+   server-side at the landing page. Completion blocks run on the main thread. */
+
+/* Opens a ready-made popup with the QR code, the referral code and a Share button. Errors are shown
+   inside the popup; completion receives nil once the QR is shown, or the same error. */
++(void)showQRCodeFromViewController:(UIViewController*)viewController completion:(void (^)(NSError *error))completion;
+/* Returns a square QR image, size in points, rendered at screen scale. For clients with their own layout. */
++(void)qrCodeImageWithSize:(CGFloat)size completion:(void (^)(UIImage *image,NSError *error))completion;
+/* Saves a QR image to Photos. If the app's Info.plist has no NSPhotoLibraryAddUsageDescription,
+   opens the share sheet instead, since a direct save without that key crashes the app. */
++(void)saveQRCodeImage:(UIImage*)image fromViewController:(UIViewController*)viewController;
+/* Opens the share sheet with a QR image. */
++(void)shareQRCodeImage:(UIImage*)image fromViewController:(UIViewController*)viewController;
 @end
 
 

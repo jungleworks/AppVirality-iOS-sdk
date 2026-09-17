@@ -82,7 +82,9 @@
 #define EMAIL_REGEX @"[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,4}"
 #define    PASSWORD_LENGTH 100
 #define RI_URL @"https://ri.appvirality.com/RI.svc/v2/RI"
-#define SHARE_URL @"http://r.appvirality.com"
+#define SHARE_URL @"https://r.appvirality.com"
+// The global QR channel (AppID IS NULL on the server), same for every app, campaign and user.
+#define QR_SOCIAL_ACTION_ID @"1040"
 
 #define IS_IPAD (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad)
 #define IS_IPHONE (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone)
@@ -111,6 +113,7 @@ extern NSString* _Nullable const NSAppViralityErrorDomain;
 + (nonnull NSString *)GetUUID;
 + (BOOL)isSimulator;
 +( NSDictionary* _Nullable )parseCampaignInfo:(NSDictionary* _Nullable)campaignInfo;
++(nonnull NSString*)shareBaseURLForCustomDomain:(nullable id)customDomain;
 +(NSString* _Nullable)encodeToPercentEscapeString:(NSString * _Nullable)string ;
 +(NSString* _Nullable)decodeFromPercentEscapeString:(NSString * _Nullable)string;
 +(BOOL)checkRequiredKeys:(NSArray* _Nullable)requiredKeys WithGivenKeys:(NSArray* _Nullable)givenKeys;
